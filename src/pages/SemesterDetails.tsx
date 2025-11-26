@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Plus, Trash2, ArrowLeft, Save, X } from 'lucide-react';
 import type { Semester, CourseWithComponents, CourseComponent } from '../types';
-import { calculateCourseAverage } from '../lib/gpaUtils';
+import { calculateCourseAverage, calculateSemesterGPA } from '../lib/gpaUtils';
 
 export default function SemesterDetails() {
     const { id } = useParams<{ id: string }>();
@@ -264,6 +264,10 @@ export default function SemesterDetails() {
         }
     };
 
+    // Calculate semester totals
+    const { semesterGPA10 } = calculateSemesterGPA(courses);
+    const totalCredits = courses.reduce((sum, c) => sum + c.credit, 0);
+
     if (loading) return <div className="p-8 text-center">Loading...</div>;
     if (!semester) return <div className="p-8 text-center">Semester not found</div>;
 
@@ -454,6 +458,21 @@ export default function SemesterDetails() {
                             )}
                         </div>
                     ))}
+
+                    {courses.length > 0 && (
+                        <div className="bg-card rounded-xl border border-border shadow-sm p-6 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-foreground">Total</h3>
+                                <p className="text-muted-foreground">{totalCredits} Credits</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm text-muted-foreground">Semester GPA</p>
+                                <p className="text-2xl font-bold text-primary">
+                                    {semesterGPA10.toFixed(2)}
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {courses.length === 0 && !isAddingCourse && (
                         <div className="text-center py-12 text-muted-foreground">
