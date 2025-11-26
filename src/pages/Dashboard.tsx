@@ -6,6 +6,7 @@ import { Input } from '../components/ui/Input';
 import { supabase } from '../lib/supabase';
 import { Plus, TrendingUp, Calculator, Trash2 } from 'lucide-react';
 import type { SemesterWithCourses } from '../types';
+import { calculateSemesterGPA } from '../lib/gpaUtils';
 
 export default function Dashboard() {
     const { user, signOut } = useAuth();
@@ -50,6 +51,7 @@ export default function Dashboard() {
                         name,
                         credit,
                         bonus,
+                        is_gpa,
                         components:course_components (
                             score,
                             weight
@@ -62,45 +64,7 @@ export default function Dashboard() {
 
             // Calculate GPAs for each semester
             const processedSemesters = data.map((sem: any) => {
-                let totalWeightedScore = 0;
-                let totalCredits = 0;
-
-                const processedCourses = sem.courses.map((course: any) => {
-                    const components = course.components || [];
-                    let averageScore = 0;
-
-                    if (components.length > 0) {
-                        const weightedSum = components.reduce((sum: number, c: any) => {
-                            return sum + (c.score * c.weight / 100);
-                        }, 0);
-                        // Add bonus if exists, cap at 10
-                        const bonus = course.bonus || 0;
-                        averageScore = Math.min(weightedSum + bonus, 10);
-                        averageScore = Math.round(averageScore * 10) / 10;
-                    }
-
-                    totalWeightedScore += averageScore * course.credit;
-                    totalCredits += course.credit;
-
-                    return {
-                        ...course,
-                        components,
-                        averageScore
-                    };
-                });
-
-                const semesterGPA10 = totalCredits > 0 ? Math.round((totalWeightedScore / totalCredits) * 100) / 100 : 0;
-
-                // Convert to GPA 4
-                let semesterGPA4 = 0;
-                if (semesterGPA10 >= 9.0) semesterGPA4 = 4.0;
-                else if (semesterGPA10 >= 8.5) semesterGPA4 = 3.7;
-                else if (semesterGPA10 >= 8.0) semesterGPA4 = 3.5;
-                else if (semesterGPA10 >= 7.0) semesterGPA4 = 3.0;
-                else if (semesterGPA10 >= 6.5) semesterGPA4 = 2.5;
-                else if (semesterGPA10 >= 5.5) semesterGPA4 = 2.0;
-                else if (semesterGPA10 >= 5.0) semesterGPA4 = 1.5;
-                else if (semesterGPA10 >= 4.0) semesterGPA4 = 1.0;
+                const { semesterGPA10, semesterGPA4, processedCourses } = calculateSemesterGPA(sem.courses);
 
                 return {
                     ...sem,

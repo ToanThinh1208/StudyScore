@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { calculateSemesterGPA } from '../lib/gpaUtils';
 
 export default function Analytics() {
     const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function Analytics() {
                     courses:courses (
                         credit,
                         bonus,
+                        is_gpa,
                         components:course_components (
                             score,
                             weight
@@ -36,43 +38,12 @@ export default function Analytics() {
             if (error) throw error;
 
             const chartData = semesters.map((sem: any) => {
-                let totalWeightedScore = 0;
-                let totalCredits = 0;
-
-                sem.courses.forEach((course: any) => {
-                    const components = course.components || [];
-                    if (components.length > 0) {
-                        const courseScore = components.reduce((sum: number, c: any) => {
-                            return sum + (c.score * c.weight / 100);
-                        }, 0);
-
-                        // Add bonus if exists, cap at 10
-                        const bonus = course.bonus || 0;
-                        const finalScore = Math.min(courseScore + bonus, 10);
-                        const roundedCourseScore = Math.round(finalScore * 10) / 10;
-
-                        totalWeightedScore += roundedCourseScore * course.credit;
-                        totalCredits += course.credit;
-                    }
-                });
-
-                const gpa10 = totalCredits > 0 ? Math.round((totalWeightedScore / totalCredits) * 100) / 100 : 0;
-
-                // Approximate GPA 4 conversion for the chart
-                let gpa4 = 0;
-                if (gpa10 >= 9.0) gpa4 = 4.0;
-                else if (gpa10 >= 8.5) gpa4 = 3.7;
-                else if (gpa10 >= 8.0) gpa4 = 3.5;
-                else if (gpa10 >= 7.0) gpa4 = 3.0;
-                else if (gpa10 >= 6.5) gpa4 = 2.5;
-                else if (gpa10 >= 5.5) gpa4 = 2.0;
-                else if (gpa10 >= 5.0) gpa4 = 1.5;
-                else if (gpa10 >= 4.0) gpa4 = 1.0;
+                const { semesterGPA10, semesterGPA4 } = calculateSemesterGPA(sem.courses);
 
                 return {
                     name: sem.name,
-                    gpa10,
-                    gpa4
+                    gpa10: semesterGPA10,
+                    gpa4: semesterGPA4
                 };
             });
 

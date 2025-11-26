@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Plus, Trash2, ArrowLeft, Save, X } from 'lucide-react';
 import type { Semester, CourseWithComponents, CourseComponent } from '../types';
+import { calculateCourseAverage } from '../lib/gpaUtils';
 
 export default function SemesterDetails() {
     const { id } = useParams<{ id: string }>();
@@ -15,6 +16,7 @@ export default function SemesterDetails() {
     const [isAddingCourse, setIsAddingCourse] = useState(false);
     const [newCourseName, setNewCourseName] = useState('');
     const [newCourseCredit, setNewCourseCredit] = useState(3);
+    const [newIsGpa, setNewIsGpa] = useState(true);
 
     // State for editing components
     const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
@@ -25,6 +27,7 @@ export default function SemesterDetails() {
     const [editingCourseInfoId, setEditingCourseInfoId] = useState<string | null>(null);
     const [tempCourseName, setTempCourseName] = useState('');
     const [tempCourseCredit, setTempCourseCredit] = useState(3);
+    const [tempIsGpa, setTempIsGpa] = useState(true);
 
     useEffect(() => {
         if (id) {
@@ -62,13 +65,7 @@ export default function SemesterDetails() {
                 let averageScore = 0;
 
                 if (components.length > 0) {
-                    const weightedSum = components.reduce((sum: number, c: any) => {
-                        return sum + (c.score * c.weight / 100);
-                    }, 0);
-                    // Add bonus if exists, cap at 10
-                    const bonus = course.bonus || 0;
-                    averageScore = Math.min(weightedSum + bonus, 10);
-                    averageScore = Math.round(averageScore * 10) / 10;
+                    averageScore = calculateCourseAverage({ ...course, components });
                 }
 
                 return {
@@ -97,6 +94,7 @@ export default function SemesterDetails() {
                         semester_id: id,
                         name: newCourseName,
                         credit: newCourseCredit,
+                        is_gpa: newIsGpa,
                         user_id: (await supabase.auth.getUser()).data.user?.id
                     }
                 ])
@@ -108,6 +106,7 @@ export default function SemesterDetails() {
             setCourses([...courses, { ...data, components: [], averageScore: 0 }]);
             setNewCourseName('');
             setNewCourseCredit(3);
+            setNewIsGpa(true);
             setIsAddingCourse(false);
         } catch (error) {
             console.error('Error adding course:', error);
@@ -153,12 +152,14 @@ export default function SemesterDetails() {
         setEditingCourseInfoId(course.id);
         setTempCourseName(course.name);
         setTempCourseCredit(course.credit);
+        setTempIsGpa(course.is_gpa ?? true);
     };
 
     const cancelEditingCourseInfo = () => {
         setEditingCourseInfoId(null);
         setTempCourseName('');
         setTempCourseCredit(3);
+        setTempIsGpa(true);
     };
 
     const saveCourseInfo = async () => {
@@ -169,7 +170,8 @@ export default function SemesterDetails() {
                 .from('courses')
                 .update({
                     name: tempCourseName,
-                    credit: tempCourseCredit
+                    credit: tempCourseCredit,
+                    is_gpa: tempIsGpa
                 })
                 .eq('id', editingCourseInfoId);
 
@@ -178,7 +180,7 @@ export default function SemesterDetails() {
             // Update local state
             setCourses(courses.map(c =>
                 c.id === editingCourseInfoId
-                    ? { ...c, name: tempCourseName, credit: tempCourseCredit }
+                    ? { ...c, name: tempCourseName, credit: tempCourseCredit, is_gpa: tempIsGpa }
                     : c
             ));
             setEditingCourseInfoId(null);
@@ -299,6 +301,16 @@ export default function SemesterDetails() {
                                     onChange={(e) => setNewCourseCredit(Number(e.target.value))}
                                 />
                             </div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <input
+                                    type="checkbox"
+                                    id="newIsGpa"
+                                    checked={newIsGpa}
+                                    onChange={(e) => setNewIsGpa(e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <label htmlFor="newIsGpa" className="text-sm font-medium">Include in GPA</label>
+                            </div>
                             <Button onClick={handleAddCourse}>Add</Button>
                             <Button variant="ghost" onClick={() => setIsAddingCourse(false)}>Cancel</Button>
                         </div>
@@ -327,6 +339,15 @@ export default function SemesterDetails() {
                                                 onChange={(e) => setTempCourseCredit(Number(e.target.value))}
                                             />
                                         </div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <input
+                                                type="checkbox"
+                                                checked={tempIsGpa}
+                                                onChange={(e) => setTempIsGpa(e.target.checked)}
+                                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                            />
+                                            <label className="text-sm font-medium">GPA</label>
+                                        </div>
                                         <Button size="sm" onClick={saveCourseInfo}>
                                             <Save className="w-4 h-4 mr-2" /> Save
                                         </Button>
@@ -337,7 +358,14 @@ export default function SemesterDetails() {
                                 ) : (
                                     <>
                                         <div>
-                                            <h3 className="text-xl font-bold text-foreground">{course.name}</h3>
+                                            <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
+                                                {course.name}
+                                                {course.is_gpa === false && (
+                                                    <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full font-normal">
+                                                        Non-GPA
+                                                    </span>
+                                                )}
+                                            </h3>
                                             <p className="text-muted-foreground">{course.credit} Credits</p>
                                         </div>
                                         <div className="flex items-center gap-6">

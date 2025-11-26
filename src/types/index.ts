@@ -20,6 +20,7 @@ export interface Course {
   name: string;
   credit: number;
   bonus?: number; // Optional bonus points
+  is_gpa?: boolean; // Whether to include in GPA calculation
   created_at: string;
 }
 
