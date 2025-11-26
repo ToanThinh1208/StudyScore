@@ -237,23 +237,39 @@ export default function SemesterDetails() {
                 }
             }
 
-            // Upsert components
-            const componentsToUpsert = tempComponents.map(c => {
-                const { id, created_at, ...rest } = c;
-                // If id starts with temp-, it's new, so we don't send id
-                if (id.startsWith('temp-')) {
-                    return {
-                        ...rest,
-                        course_id: editingCourseId
-                    };
-                }
-                return { id, ...rest, course_id: editingCourseId };
-            });
+            // Split components into existing (update) and new (insert)
+            const existingComponents = tempComponents
+                .filter(c => !c.id.startsWith('temp-'))
+                .map(c => ({
+                    id: c.id,
+                    course_id: editingCourseId,
+                    name: c.name,
+                    weight: c.weight,
+                    score: c.score
+                }));
 
-            if (componentsToUpsert.length > 0) {
+            const newComponents = tempComponents
+                .filter(c => c.id.startsWith('temp-'))
+                .map(c => ({
+                    course_id: editingCourseId,
+                    name: c.name,
+                    weight: c.weight,
+                    score: c.score
+                }));
+
+            // Update existing components
+            if (existingComponents.length > 0) {
                 const { error } = await supabase
                     .from('course_components')
-                    .upsert(componentsToUpsert);
+                    .upsert(existingComponents);
+                if (error) throw error;
+            }
+
+            // Insert new components
+            if (newComponents.length > 0) {
+                const { error } = await supabase
+                    .from('course_components')
+                    .insert(newComponents);
                 if (error) throw error;
             }
 
