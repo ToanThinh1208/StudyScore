@@ -4,9 +4,26 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { supabase } from '../lib/supabase';
-import { Plus, TrendingUp, Calculator, Trash2 } from 'lucide-react';
+import { Plus, TrendingUp, Calculator } from 'lucide-react';
 import type { SemesterWithCourses } from '../types';
 import { calculateSemesterGPA } from '../lib/gpaUtils';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { updateSemesterOrder } from '../lib/semesterUtils';
+import { SortableSemesterItem } from '../components/SortableSemesterItem';
 
 export default function Dashboard() {
     const { user, signOut } = useAuth();
@@ -127,6 +144,63 @@ export default function Dashboard() {
         }
     };
 
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (active.id !== over?.id) {
+            setSemesters((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over?.id);
+
+                const newItems = arrayMove(items, oldIndex, newIndex);
+
+                // Update index_order for all items
+                const updatedItems = newItems.map((item, index) => ({
+                    ...item,
+                    index_order: index + 1
+                }));
+
+                // Persist to database
+                updateSemesterOrder(updatedItems.map(s => ({ id: s.id, index_order: s.index_order })));
+
+                return updatedItems;
+            });
+        }
+    };
+
+    const handleMoveSemester = (index: number, direction: 'up' | 'down') => {
+        if (
+            (direction === 'up' && index === 0) ||
+            (direction === 'down' && index === semesters.length - 1)
+        ) {
+            return;
+        }
+
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+
+        setSemesters((items) => {
+            const newItems = arrayMove(items, index, newIndex);
+
+            // Update index_order
+            const updatedItems = newItems.map((item, idx) => ({
+                ...item,
+                index_order: idx + 1
+            }));
+
+            // Persist
+            updateSemesterOrder(updatedItems.map(s => ({ id: s.id, index_order: s.index_order })));
+
+            return updatedItems;
+        });
+    };
+
     // Calculate cumulative GPA
     const cumulativeGPA10 = semesters.length > 0
         ? Math.round(semesters.reduce((sum, s) => sum + (s.semesterGPA10 || 0), 0) / semesters.length * 100) / 100
@@ -206,42 +280,31 @@ export default function Dashboard() {
                     {semesters.length === 0 ? (
                         <p className="text-muted-foreground text-center py-8">No semesters added yet.</p>
                     ) : (
-                        <div className="space-y-4">
-                            {semesters.map(semester => (
-                                <div
-                                    key={semester.id}
-                                    className="p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-                                    onClick={() => navigate(`/semester/${semester.id}`)}
-                                >
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <h3 className="text-lg font-bold">{semester.name}</h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                {semester.courses.length} courses • {semester.courses.reduce((sum, c) => sum + c.credit, 0)} credits
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-6">
-                                            <div className="text-right">
-                                                <p className="text-sm text-muted-foreground">GPA</p>
-                                                <p className="text-2xl font-bold text-primary">
-                                                    {semester.semesterGPA10?.toFixed(2) || '--'}
-                                                </p>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteSemester(semester.id);
-                                                }}
-                                            >
-                                                <Trash2 className="w-4 h-4 text-destructive" />
-                                            </Button>
-                                        </div>
-                                    </div>
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <SortableContext
+                                items={semesters.map(s => s.id)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                <div className="space-y-4">
+                                    {semesters.map((semester, index) => (
+                                        <SortableSemesterItem
+                                            key={semester.id}
+                                            semester={semester}
+                                            isFirst={index === 0}
+                                            isLast={index === semesters.length - 1}
+                                            onDelete={handleDeleteSemester}
+                                            onClick={() => navigate(`/semester/${semester.id}`)}
+                                            onMoveUp={() => handleMoveSemester(index, 'up')}
+                                            onMoveDown={() => handleMoveSemester(index, 'down')}
+                                        />
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
+                            </SortableContext>
+                        </DndContext>
                     )}
                 </div>
             </div>
