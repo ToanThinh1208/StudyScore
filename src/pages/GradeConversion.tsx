@@ -84,7 +84,18 @@ export default function GradeConversion() {
                                 <Input
                                     type="number"
                                     value={score}
-                                    onChange={(e) => setScore(e.target.value)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '') {
+                                            setScore('');
+                                            return;
+                                        }
+                                        const numVal = parseFloat(val);
+                                        const max = is10to4 ? 10 : 4;
+                                        if (!isNaN(numVal) && numVal >= 0 && numVal <= max) {
+                                            setScore(val);
+                                        }
+                                    }}
                                     placeholder={is10to4 ? "Enter score (0-10)" : "Enter score (0-4)"}
                                     max={is10to4 ? 10 : 4}
                                     min={0}
