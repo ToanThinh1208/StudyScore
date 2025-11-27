@@ -25,9 +25,11 @@ import {
 import { updateSemesterOrder } from '../lib/semesterUtils';
 import { SortableSemesterItem } from '../components/SortableSemesterItem';
 import { Dropdown, DropdownItem } from '../components/ui/Dropdown';
+import { useProfile } from '../hooks/useProfile';
 
 export default function Dashboard() {
     const { user, signOut } = useAuth();
+    const { profile } = useProfile();
     // console.log('User Object:', user);
     // console.log('User Metadata:', user?.user_metadata);
     const navigate = useNavigate();
@@ -225,12 +227,12 @@ export default function Dashboard() {
                             trigger={
                                 <div className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                                     <div className="text-right hidden md:block">
-                                        <p className="text-sm font-medium text-foreground">{user?.user_metadata?.full_name}</p>
+                                        <p className="text-sm font-medium text-foreground">{profile?.full_name || user?.email}</p>
                                         <p className="text-xs text-muted-foreground">Student</p>
                                     </div>
                                     <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
                                         <img
-                                            src={user?.user_metadata?.avatar_url || "/avatar-mac-dinh-4-2.jpg"}
+                                            src={profile?.avatar_url || "/avatar-mac-dinh-4-2.jpg"}
                                             alt="User Avatar"
                                             className="w-full h-full object-cover"
                                         />
@@ -239,7 +241,7 @@ export default function Dashboard() {
                             }
                         >
                             <div className="px-4 py-2 border-b border-border md:hidden">
-                                <p className="text-sm font-medium text-foreground truncate">{user?.user_metadata?.full_name}</p>
+                                <p className="text-sm font-medium text-foreground truncate">{profile?.full_name || user?.email}</p>
                             </div>
                             <DropdownItem onClick={() => navigate('/profile')}>
                                 Profile

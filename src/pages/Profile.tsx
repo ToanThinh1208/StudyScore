@@ -6,9 +6,11 @@ import { supabase } from '../lib/supabase';
 import { updateUserPassword } from '../lib/authUtils';
 import { User, Lock, Save, Camera, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useProfile } from '../hooks/useProfile';
 
 export default function Profile() {
     const { user } = useAuth();
+    const { profile } = useProfile();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -27,39 +29,15 @@ export default function Profile() {
     const [confirmPassword, setConfirmPassword] = useState('');
 
     useEffect(() => {
+        if (profile) {
+            setFullName(profile.full_name || '');
+            setFptStudentCode(profile.fpt_student_code || '');
+            setAvatarUrl(profile.avatar_url || '');
+        }
         if (user) {
-            setFullName(user.user_metadata?.full_name || '');
-            setFptStudentCode(user.user_metadata?.fpt_student_code || '');
-            setAvatarUrl(user.user_metadata?.avatar_url || '');
             setEmail(user.email || '');
-
-            // Also fetch from profiles table to be sure
-            fetchProfile();
         }
-    }, [user]);
-
-    const fetchProfile = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('full_name, fpt_student_code, avatar_url')
-                .eq('id', user?.id)
-                .single();
-
-            if (error && error.code !== 'PGRST116') {
-                console.error('Error fetching profile:', error);
-                return;
-            }
-
-            if (data) {
-                setFullName(data.full_name || '');
-                setFptStudentCode(data.fpt_student_code || '');
-                if (data.avatar_url) setAvatarUrl(data.avatar_url);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    };
+    }, [profile, user]);
 
     const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
         try {
@@ -113,7 +91,7 @@ export default function Profile() {
 
             if (profileError) throw profileError;
 
-            // 2. Update auth.users metadata
+            // 2. Update auth.users metadata (keep this for fallback/consistency)
             const { error: authError } = await supabase.auth.updateUser({
                 data: {
                     full_name: fullName,
