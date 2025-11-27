@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { updateUserPassword } from '../lib/authUtils';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Lock, CheckCircle } from 'lucide-react';
@@ -28,40 +29,20 @@ export default function ResetPassword() {
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        if (password !== confirmPassword) {
-            setMessage({ type: 'error', text: 'Passwords do not match' });
-            return;
-        }
-
         setLoading(true);
         setMessage(null);
 
-        try {
-            const { error } = await supabase.auth.updateUser({
-                password: password
-            });
+        const result = await updateUserPassword(password, confirmPassword);
 
-            if (error) throw error;
-
-            setMessage({
-                type: 'success',
-                text: 'Password updated successfully!',
-            });
-
-            // Redirect to login after a short delay
+        if (result.success) {
+            setMessage({ type: 'success', text: result.message });
             setTimeout(() => {
                 navigate('/login');
             }, 2000);
-
-        } catch (error: any) {
-            setMessage({
-                type: 'error',
-                text: error.message || 'Failed to update password.',
-            });
-        } finally {
-            setLoading(false);
+        } else {
+            setMessage({ type: 'error', text: result.message });
         }
+        setLoading(false);
     };
 
     if (message?.type === 'success') {

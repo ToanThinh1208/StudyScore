@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { supabase } from '../lib/supabase';
+import { updateUserPassword } from '../lib/authUtils';
 import { User, Lock, Save, Camera, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -128,34 +129,19 @@ export default function Profile() {
     };
 
     const handleUpdatePassword = async () => {
-        if (newPassword !== confirmPassword) {
-            setMessage({ type: 'error', text: 'Passwords do not match' });
-            return;
-        }
+        setLoading(true);
+        setMessage(null);
 
-        if (newPassword.length < 6) {
-            setMessage({ type: 'error', text: 'Password must be at least 6 characters' });
-            return;
-        }
+        const result = await updateUserPassword(newPassword, confirmPassword);
 
-        try {
-            setLoading(true);
-            setMessage(null);
-
-            const { error } = await supabase.auth.updateUser({
-                password: newPassword
-            });
-
-            if (error) throw error;
-
-            setMessage({ type: 'success', text: 'Password updated successfully!' });
+        if (result.success) {
+            setMessage({ type: 'success', text: result.message });
             setNewPassword('');
             setConfirmPassword('');
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message });
-        } finally {
-            setLoading(false);
+        } else {
+            setMessage({ type: 'error', text: result.message });
         }
+        setLoading(false);
     };
 
     return (
