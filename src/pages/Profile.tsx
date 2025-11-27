@@ -19,6 +19,9 @@ export default function Profile() {
     const [avatarUrl, setAvatarUrl] = useState('');
     const [uploading, setUploading] = useState(false);
 
+    // Email State
+    const [email, setEmail] = useState('');
+
     // Password State
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,6 +31,7 @@ export default function Profile() {
             setFullName(user.user_metadata?.full_name || '');
             setFptStudentCode(user.user_metadata?.fpt_student_code || '');
             setAvatarUrl(user.user_metadata?.avatar_url || '');
+            setEmail(user.email || '');
 
             // Also fetch from profiles table to be sure
             fetchProfile();
@@ -120,7 +124,16 @@ export default function Profile() {
 
             if (authError) throw authError;
 
-            setMessage({ type: 'success', text: 'Profile updated successfully!' });
+            let successMessage = 'Profile updated successfully!';
+
+            // 3. Check for email update
+            if (email !== user?.email) {
+                const { error: emailError } = await supabase.auth.updateUser({ email: email });
+                if (emailError) throw emailError;
+                successMessage += ' Confirmation link sent to your new email address.';
+            }
+
+            setMessage({ type: 'success', text: successMessage });
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message });
         } finally {
@@ -196,10 +209,16 @@ export default function Profile() {
                         <div>
                             <label className="block text-sm font-medium mb-1 text-foreground">Email</label>
                             <Input
-                                value={user?.email || ''}
-                                disabled
-                                className="bg-muted text-muted-foreground"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="Enter your email"
                             />
+                            {email !== user?.email && (
+                                <p className="text-xs text-muted-foreground mt-1 text-yellow-600">
+                                    Confirmation required on the new email address.
+                                </p>
+                            )}
+
                         </div>
 
                         <div>
