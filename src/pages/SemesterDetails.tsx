@@ -429,6 +429,16 @@ export default function SemesterDetails() {
                                         </div>
                                     </div>
                                     <div className="space-y-3 mb-4">
+                                        <div className="flex gap-4 items-center mb-2 px-1">
+                                            <label className="flex-1 text-sm font-medium text-muted-foreground">Component Name</label>
+                                            <div className="w-24">
+                                                <label className="text-sm font-medium text-muted-foreground">Weight (%)</label>
+                                            </div>
+                                            <div className="w-24">
+                                                <label className="text-sm font-medium text-muted-foreground">Score</label>
+                                            </div>
+                                            <div className="w-8"></div>
+                                        </div>
                                         {tempComponents.map((comp, idx) => (
                                             <div key={comp.id || idx} className="flex gap-4 items-center">
                                                 <Input
