@@ -26,6 +26,7 @@ function App() {
             <Route path="/semester/:id" element={<SemesterDetails />} />
             <Route path="/grade-conversion" element={<GradeConversion />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
