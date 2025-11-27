@@ -212,7 +212,7 @@ export default function Profile() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1 text-foreground">Student ID (fpt_student_code)</label>
+                            <label className="block text-sm font-medium mb-1 text-foreground">Student ID</label>
                             <Input
                                 value={fptStudentCode}
                                 onChange={(e) => setFptStudentCode(e.target.value)}
