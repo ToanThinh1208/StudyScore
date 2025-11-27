@@ -1,31 +1,40 @@
 import { useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { ArrowLeft, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, ArrowUpDown, Settings2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { convert10to4, convert4to10, convert10to4Linear, convert4to10Linear } from '../lib/gpaUtils';
 
 export default function GradeConversion() {
     const navigate = useNavigate();
-    const [score10, setScore10] = useState<string>('');
-    const [score4, setScore4] = useState<string>('');
-
-    const convert10to4 = (score: number): number => {
-        if (score >= 9.0) return 4.0; // A+
-        if (score >= 8.5) return 3.7; // A
-        if (score >= 8.0) return 3.5; // B+
-        if (score >= 7.0) return 3.0; // B
-        if (score >= 6.5) return 2.5; // C+
-        if (score >= 5.5) return 2.0; // C
-        if (score >= 5.0) return 1.5; // D+
-        if (score >= 4.0) return 1.0; // D
-        return 0; // F
-    };
+    const [score, setScore] = useState<string>('');
+    const [result, setResult] = useState<string>('');
+    const [is10to4, setIs10to4] = useState(true);
+    const [useLinear, setUseLinear] = useState(true);
 
     const handleConvert = () => {
-        const s10 = parseFloat(score10);
-        if (!isNaN(s10)) {
-            setScore4(convert10to4(s10).toFixed(1));
+        const s = parseFloat(score);
+        if (isNaN(s)) return;
+
+        if (useLinear) {
+            if (is10to4) {
+                setResult(convert10to4Linear(s).toFixed(2));
+            } else {
+                setResult(convert4to10Linear(s).toFixed(2));
+            }
+        } else {
+            if (is10to4) {
+                setResult(convert10to4(s).toFixed(1));
+            } else {
+                setResult(convert4to10(s));
+            }
         }
+    };
+
+    const toggleDirection = () => {
+        setIs10to4(!is10to4);
+        setScore('');
+        setResult('');
     };
 
     return (
@@ -40,19 +49,44 @@ export default function GradeConversion() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Converter */}
                     <div className="bg-card p-6 rounded-xl border border-border shadow-sm h-fit">
-                        <h2 className="text-xl font-bold mb-6 flex items-center">
-                            <ArrowRightLeft className="w-5 h-5 mr-2" /> Quick Converter
-                        </h2>
+                        <div className="flex flex-col gap-4 mb-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold flex items-center">
+                                    <ArrowRightLeft className="w-5 h-5 mr-2" /> Quick Converter
+                                </h2>
+                                <Button variant="outline" size="sm" onClick={toggleDirection}>
+                                    <ArrowUpDown className="w-4 h-4 mr-2" />
+                                    {is10to4 ? "10 → 4" : "4 → 10"}
+                                </Button>
+                            </div>
+
+                            <div className="flex items-center justify-between bg-muted/50 p-2 rounded-lg">
+                                <span className="text-sm font-medium flex items-center">
+                                    <Settings2 className="w-4 h-4 mr-2" />
+                                    Mode: {useLinear ? "Linear (Standard)" : "Table (FPT)"}
+                                </span>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setUseLinear(!useLinear)}
+                                    className="text-xs h-7"
+                                >
+                                    Switch to {useLinear ? "Table" : "Linear"}
+                                </Button>
+                            </div>
+                        </div>
 
                         <div className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium mb-2">Score (10-point scale)</label>
+                                <label className="block text-sm font-medium mb-2">
+                                    {is10to4 ? "Score (10-point scale)" : "Score (4-point scale)"}
+                                </label>
                                 <Input
                                     type="number"
-                                    value={score10}
-                                    onChange={(e) => setScore10(e.target.value)}
-                                    placeholder="Enter score (0-10)"
-                                    max={10}
+                                    value={score}
+                                    onChange={(e) => setScore(e.target.value)}
+                                    placeholder={is10to4 ? "Enter score (0-10)" : "Enter score (0-4)"}
+                                    max={is10to4 ? 10 : 4}
                                     min={0}
                                 />
                             </div>
@@ -60,8 +94,10 @@ export default function GradeConversion() {
                             <Button className="w-full" onClick={handleConvert}>Convert</Button>
 
                             <div className="text-center p-4 bg-muted rounded-lg">
-                                <p className="text-sm text-muted-foreground mb-1">Result (4-point scale)</p>
-                                <p className="text-3xl font-bold text-primary">{score4 || '--'}</p>
+                                <p className="text-sm text-muted-foreground mb-1">
+                                    {is10to4 ? "Result (4-point scale)" : "Result (10-point scale)"}
+                                </p>
+                                <p className="text-3xl font-bold text-primary">{result || '--'}</p>
                             </div>
                         </div>
                     </div>
@@ -79,8 +115,7 @@ export default function GradeConversion() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    <tr><td className="p-3">9.0 - 10.0</td><td className="p-3">4.0</td><td className="p-3">A+</td></tr>
-                                    <tr><td className="p-3">8.5 - 8.9</td><td className="p-3">3.7</td><td className="p-3">A</td></tr>
+                                    <tr><td className="p-3">8.5 - 10.0</td><td className="p-3">4.0</td><td className="p-3">A</td></tr>
                                     <tr><td className="p-3">8.0 - 8.4</td><td className="p-3">3.5</td><td className="p-3">B+</td></tr>
                                     <tr><td className="p-3">7.0 - 7.9</td><td className="p-3">3.0</td><td className="p-3">B</td></tr>
                                     <tr><td className="p-3">6.5 - 6.9</td><td className="p-3">2.5</td><td className="p-3">C+</td></tr>
