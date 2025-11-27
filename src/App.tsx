@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import SemesterDetails from './pages/SemesterDetails';
 import GradeConversion from './pages/GradeConversion';
 import Analytics from './pages/Analytics';
+import Profile from './pages/Profile';
 
 function App() {
   return (

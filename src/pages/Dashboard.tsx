@@ -230,7 +230,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
                                         <img
-                                            src="/avatar-mac-dinh-4-2.jpg"
+                                            src={user?.user_metadata?.avatar_url || "/avatar-mac-dinh-4-2.jpg"}
                                             alt="User Avatar"
                                             className="w-full h-full object-cover"
                                         />

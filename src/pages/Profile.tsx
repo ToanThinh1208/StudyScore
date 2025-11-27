@@ -3,17 +3,20 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { supabase } from '../lib/supabase';
-import { User, Lock, Save, Camera } from 'lucide-react';
+import { User, Lock, Save, Camera, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Profile() {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     // Profile State
     const [fullName, setFullName] = useState('');
-    const [fpt_student_code, setfpt_student_code] = useState('');
+    const [fptStudentCode, setFptStudentCode] = useState('');
     const [avatarUrl, setAvatarUrl] = useState('');
+    const [uploading, setUploading] = useState(false);
 
     // Password State
     const [newPassword, setNewPassword] = useState('');
@@ -22,25 +25,99 @@ export default function Profile() {
     useEffect(() => {
         if (user) {
             setFullName(user.user_metadata?.full_name || '');
-            setfpt_student_code(user.user_metadata?.fpt_student_code || '');
+            setFptStudentCode(user.user_metadata?.fpt_student_code || '');
             setAvatarUrl(user.user_metadata?.avatar_url || '');
+
+            // Also fetch from profiles table to be sure
+            fetchProfile();
         }
     }, [user]);
+
+    const fetchProfile = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('full_name, fpt_student_code, avatar_url')
+                .eq('id', user?.id)
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                console.error('Error fetching profile:', error);
+                return;
+            }
+
+            if (data) {
+                setFullName(data.full_name || '');
+                setFptStudentCode(data.fpt_student_code || '');
+                if (data.avatar_url) setAvatarUrl(data.avatar_url);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    };
+
+    const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            setUploading(true);
+            setMessage(null);
+
+            if (!event.target.files || event.target.files.length === 0) {
+                throw new Error('You must select an image to upload.');
+            }
+
+            const file = event.target.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+            if (uploadError) {
+                throw uploadError;
+            }
+
+            const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            setAvatarUrl(data.publicUrl);
+            setMessage({ type: 'success', text: 'Avatar uploaded successfully!' });
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message });
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleUpdateProfile = async () => {
         try {
             setLoading(true);
             setMessage(null);
 
-            const { error } = await supabase.auth.updateUser({
+            const updates = {
+                id: user?.id,
+                full_name: fullName,
+                fpt_student_code: fptStudentCode,
+                avatar_url: avatarUrl,
+                updated_at: new Date().toISOString(),
+            };
+
+            // 1. Update profiles table
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert(updates);
+
+            if (profileError) throw profileError;
+
+            // 2. Update auth.users metadata
+            const { error: authError } = await supabase.auth.updateUser({
                 data: {
                     full_name: fullName,
-                    fpt_student_code: fpt_student_code,
+                    fpt_student_code: fptStudentCode,
                     avatar_url: avatarUrl
                 }
             });
 
-            if (error) throw error;
+            if (authError) throw authError;
 
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
         } catch (error: any) {
@@ -84,7 +161,12 @@ export default function Profile() {
     return (
         <div className="min-h-screen bg-background p-8">
             <div className="max-w-2xl mx-auto space-y-8">
-                <h1 className="text-3xl font-bold text-foreground">Profile Settings</h1>
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" onClick={() => navigate('/')} className="p-2">
+                        <ArrowLeft className="w-6 h-6" />
+                    </Button>
+                    <h1 className="text-3xl font-bold text-foreground">Profile Settings</h1>
+                </div>
 
                 {message && (
                     <div className={`p-4 rounded-md ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
@@ -111,23 +193,17 @@ export default function Profile() {
                             <label className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-2 rounded-full cursor-pointer hover:bg-primary/90 transition-colors shadow-sm">
                                 <Camera className="w-4 h-4" />
                                 <input
-                                    type="text"
+                                    type="file"
+                                    accept="image/*"
                                     className="hidden"
-                                    // For now, we'll just use a text input for URL or handle file upload later if bucket exists
-                                    // This is a placeholder for the file input logic
-                                    onChange={(e) => console.log('File upload not implemented yet')}
+                                    onChange={uploadAvatar}
+                                    disabled={uploading}
                                 />
                             </label>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Avatar URL (Optional)
+                            {uploading ? 'Uploading...' : 'Click camera icon to change avatar'}
                         </p>
-                        <Input
-                            value={avatarUrl}
-                            onChange={(e) => setAvatarUrl(e.target.value)}
-                            placeholder="https://example.com/avatar.jpg"
-                            className="mt-2"
-                        />
                     </div>
 
                     <div className="space-y-4">
@@ -152,13 +228,13 @@ export default function Profile() {
                         <div>
                             <label className="block text-sm font-medium mb-1 text-foreground">Student ID (fpt_student_code)</label>
                             <Input
-                                value={fpt_student_code}
-                                onChange={(e) => setfpt_student_code(e.target.value)}
+                                value={fptStudentCode}
+                                onChange={(e) => setFptStudentCode(e.target.value)}
                                 placeholder="Enter your student ID"
                             />
                         </div>
 
-                        <Button onClick={handleUpdateProfile} disabled={loading} className="w-full">
+                        <Button onClick={handleUpdateProfile} disabled={loading || uploading} className="w-full">
                             <Save className="w-4 h-4 mr-2" />
                             {loading ? 'Saving...' : 'Save Profile'}
                         </Button>
