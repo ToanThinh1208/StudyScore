@@ -24,9 +24,12 @@ import {
 } from '@dnd-kit/sortable';
 import { updateSemesterOrder } from '../lib/semesterUtils';
 import { SortableSemesterItem } from '../components/SortableSemesterItem';
+import { Dropdown, DropdownItem } from '../components/ui/Dropdown';
 
 export default function Dashboard() {
     const { user, signOut } = useAuth();
+    // console.log('User Object:', user);
+    // console.log('User Metadata:', user?.user_metadata);
     const navigate = useNavigate();
     const location = useLocation();
     const [semesters, setSemesters] = useState<SemesterWithCourses[]>([]);
@@ -218,8 +221,33 @@ export default function Dashboard() {
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
                     <div className="flex items-center gap-4">
-                        <span className="text-muted-foreground">Welcome, {user?.email}</span>
-                        <Button variant="outline" onClick={signOut}>Sign Out</Button>
+                        <Dropdown
+                            trigger={
+                                <div className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                                    <div className="text-right hidden md:block">
+                                        <p className="text-sm font-medium text-foreground">{user?.user_metadata?.full_name}</p>
+                                        <p className="text-xs text-muted-foreground">Student</p>
+                                    </div>
+                                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
+                                        <img
+                                            src="/avatar-mac-dinh-4-2.jpg"
+                                            alt="User Avatar"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                </div>
+                            }
+                        >
+                            <div className="px-4 py-2 border-b border-border md:hidden">
+                                <p className="text-sm font-medium text-foreground truncate">{user?.user_metadata?.full_name}</p>
+                            </div>
+                            <DropdownItem onClick={() => navigate('/profile')}>
+                                Profile
+                            </DropdownItem>
+                            <DropdownItem onClick={signOut} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                Logout
+                            </DropdownItem>
+                        </Dropdown>
                     </div>
                 </div>
 
