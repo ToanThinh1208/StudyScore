@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -33,7 +33,6 @@ export default function Dashboard() {
     // console.log('User Object:', user);
     // console.log('User Metadata:', user?.user_metadata);
     const navigate = useNavigate();
-    const location = useLocation();
     const [semesters, setSemesters] = useState<SemesterWithCourses[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddingSemester, setIsAddingSemester] = useState(false);
@@ -41,26 +40,7 @@ export default function Dashboard() {
 
     useEffect(() => {
         fetchDashboardData();
-
-        // Refresh data when window/tab regains focus
-        const handleFocus = () => {
-            fetchDashboardData();
-        };
-
-        window.addEventListener('focus', handleFocus);
-
-        return () => {
-            window.removeEventListener('focus', handleFocus);
-        };
     }, []);
-
-    // Refresh when navigating back to dashboard
-    useEffect(() => {
-        if (location.pathname === '/') {
-            fetchDashboardData();
-        }
-    }, [location.pathname]);
-
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
